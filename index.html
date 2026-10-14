@@ -108,8 +108,8 @@
 </div>
 
 <script>
-    const WK_KEY = 'artale_rush_200_wk_v8';
-    const LG_KEY = 'artale_rush_200_lg_v8';
+    const WK_KEY = 'artale_rush_200_wk_v9';
+    const LG_KEY = 'artale_rush_200_lg_v9';
 
     const mwPct = [0, 0.01, 0.01, 0.02, 0.02, 0.03, 0.03, 0.04, 0.04, 0.05, 0.05, 0.06, 0.06, 0.07, 0.07, 0.08, 0.08, 0.09, 0.09, 0.1, 0.1, 0.11, 0.11, 0.12, 0.12, 0.13, 0.13, 0.14, 0.14, 0.15, 0.15];
     
@@ -139,23 +139,16 @@
     }
 
     function handleStatInput(type) {
-        const base = safeVal(type + '_base', type === 'dex' ? 900 : 47);
-        const bonus = safeVal(type + '_equip', type === 'dex' ? 149 : 78);
         const mwLevel = parseInt(safeVal('skill_mw', 0));
-        const pct = mwPct[mwLevel] || 0;
-
-        // 當楓祝關閉時才更新純裝備基準值；若開啟中則依據配點動態還原/計算
+        
+        // 只有在楓祝未開啟 (0) 時，修改裝備欄才更新純裝備基準值
         if (mwLevel === 0) {
-            if (type === 'dex') rawEquipDEX = bonus;
-            else rawEquipSTR = bonus;
-        } else {
-            if (type === 'dex') rawEquipDEX = bonus - Math.floor(base * pct);
-            else rawEquipSTR = bonus - Math.floor(base * pct);
+            if (type === 'dex') rawEquipDEX = safeVal('dex_equip', 149);
+            else if (type === 'str') rawEquipSTR = safeVal('str_equip', 78);
         }
 
-        // 開啟楓祝時修改配點，同步更新被鎖定的裝備加成欄位顯示
+        // 修改配點或裝備時，重新計算加成欄位與表功
         handleMWChange();
-        updateAll();
     }
 
     function handleMWChange() {
@@ -176,7 +169,7 @@
         const dexBase = safeVal('dex_base', 900);
         const strBase = safeVal('str_base', 47);
 
-        // 動態計算楓祝加成並填入
+        // 即時依據配點與楓祝加成計算，更新裝備/加成欄位顯示
         dexEquipInput.value = rawEquipDEX + Math.floor(dexBase * pct);
         strEquipInput.value = rawEquipSTR + Math.floor(strBase * pct);
 
