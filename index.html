@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artale 衝刺 200 等紀錄器</title>
+    <style>
+        :root { --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0; --accent: #ffca28; --input-bg: #2d2d2d; --blue: #2196f3; --red: #cf6679; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg-color); color: var(--text-color); padding: 10px; margin: 0; -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 600px; margin: auto; padding-bottom: 80px; }
+        h3 { color: var(--accent); font-size: 16px; margin: 15px 0 8px 5px; }
+        .card { background: var(--card-bg); padding: 12px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+        .grid-att { display: grid; grid-template-columns: 0.8fr 0.8fr 1fr 1fr 1fr 1fr 1fr; gap: 4px; margin-bottom: 8px; align-items: center; }
+        .field { display: flex; flex-direction: column; align-items: center; }
+        label { font-size: 10px; color: #aaa; margin-bottom: 3px; font-weight: bold; white-space: nowrap; text-align: center; width: 100%; }
+        input, select { background: var(--input-bg); border: 1px solid #333; color: #fff; padding: 8px 4px; border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; outline: none; text-align: center; text-align-last: center; }
+        input:disabled { opacity: 0.3; background: #1a1a1a; }
+        .chk-field { display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--input-bg); border: 1px solid #333; border-radius: 6px; height: 35px; width: 100%; }
+        .chk-field input { width: 18px; height: 18px; cursor: pointer; margin: 0; }
+        .range-box { background: #000; border: 1px solid #333; padding: 12px; border-radius: 8px; text-align: center; margin: 8px 0; }
+        .range-val { color: var(--accent); font-size: 24px; font-weight: bold; }
+        .stat-result-box { background: #181818; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-top: 8px; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; color: #bbb; }
+        .stat-row .val { color: var(--accent); font-weight: bold; }
+        .btn-main { width: 100%; padding: 14px; background: var(--blue); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin: 12px 0; }
+        .history-item { background: #252525; border: 1px solid #444; border-radius: 10px; margin-bottom: 10px; padding: 12px; border-left: 4px solid var(--accent); }
+        .hist-header { display: flex; justify-content: space-between; border-bottom: 1px solid #444; padding-bottom: 6px; margin-bottom: 8px; }
+        .hist-title { color: var(--accent); font-weight: bold; font-size: 13px; }
+        .hist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #bbb; font-size: 11px; }
+        .hist-full { grid-column: span 2; padding-top: 4px; border-top: 1px dashed #444; margin-top: 4px; color: #bbb; font-size: 11px; }
+        .hist-controls { display: flex; gap: 6px; margin-top: 8px; justify-content: flex-end; }
+        .btn-ctrl { background: #333; color: #fff; border: 1px solid #444; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        #custom_modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-card { background: #2d2d2d; padding: 20px; border-radius: 12px; text-align: center; width: 80%; max-width: 280px; border: 1px solid #444; }
+    </style>
+</head>
+<body>
+
+<div id="custom_modal">
+    <div class="modal-card">
+        <div style="font-weight: bold; margin-bottom: 12px;">確定刪除紀錄？</div>
+        <button class="btn-ctrl" style="background:var(--red); width:100%; height:36px; margin-bottom:8px;" id="modal_confirm_btn">確定刪除</button>
+        <button class="btn-ctrl" style="background:#555; width:100%; height:36px;" onclick="closeModal()">取消</button>
+    </div>
+</div>
+
+<div class="container">
+    <h3>⚔️ Artale 數值與屬性設定</h3>
+    <div class="card">
+        <!-- Row 1 -->
+        <div class="grid-3">
+            <div class="field"><label>LEVEL</label><input type="number" id="lv" value="187" oninput="updateAll()"></div>
+            <div class="field"><label>DEX(配點)</label><input type="number" id="dex_base" value="900" oninput="handleStatInput('dex')"></div>
+            <div class="field"><label>DEX(裝備)</label><input type="number" id="dex_equip" value="149" oninput="handleStatInput('dex')"></div>
+        </div>
+        <!-- Row 2 -->
+        <div class="grid-3">
+            <div class="field">
+                <label>楓葉祝福</label>
+                <select id="skill_mw" onchange="handleMWChange()">
+                    <option value="0" selected>0</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="30">30</option>
+                </select>
+            </div>
+            <div class="field"><label>STR(配點)</label><input type="number" id="str_base" value="47" oninput="handleStatInput('str')"></div>
+            <div class="field"><label>STR(裝備)</label><input type="number" id="str_equip" value="78" oninput="handleStatInput('str')"></div>
+        </div>
+        <!-- Row 3: 攻擊與 Buff -->
+        <div class="grid-att">
+            <div class="field"><label>迴響</label><div class="chk-field"><input type="checkbox" id="chk_echo" onchange="updateAll()"></div></div>
+            <div class="field"><label>念力</label><div class="chk-field"><input type="checkbox" id="chk_conc" onchange="updateAll()"></div></div>
+            <div class="field"><label>武器</label><input type="number" id="att_weapon" value="115" oninput="updateAll()"></div>
+            <div class="field"><label>手套</label><input type="number" id="att_glove" value="12" oninput="updateAll()"></div>
+            <div class="field"><label>矢+精</label><input type="number" id="att_arrow" value="12" oninput="updateAll()"></div>
+            <div class="field"><label>其它</label><input type="number" id="att_other" value="1" oninput="updateAll()"></div>
+            <div class="field"><label>活動</label><input type="number" id="att_act" value="0" oninput="updateAll()"></div>
+        </div>
+
+        <div class="range-box">
+            <div class="range-val" id="range_display">0 ~ 0</div>
+        </div>
+    </div>
+
+    <h3>🚀 衝刺 200 等練功計算</h3>
+    <div class="card">
+        <div class="grid-3">
+            <div class="field"><label>等級 %</label><input type="number" id="exp_pct" value="50" step="0.01" oninput="updateAll()"></div>
+            <div class="field"><label>效率 (W/10min)</label><input type="number" id="exp_eff" value="600" oninput="updateAll()"></div>
+            <div class="field"><label>地圖</label><input type="text" id="map_name" value="烏魯莊園2" placeholder="請填寫地圖" oninput="autoSave()"></div>
+        </div>
+
+        <div class="stat-result-box">
+            <div class="stat-row"><span>升下一級時間：</span><span class="val" id="time_next_lv">0.00 小時</span></div>
+            <div class="stat-row"><span>離 200 等剩餘經驗：</span><span class="val" id="exp_remain_total">0 億</span></div>
+            <div class="stat-row"><span>需練功次數 (10min/次)：</span><span class="val" id="count_remain_total">0 次</span></div>
+        </div>
+
+        <div class="field" style="margin-top:8px; width:100%;"><label style="text-align:left;">Note (備註)</label><textarea id="note_area" style="height:50px; background:var(--input-bg); color:#fff; border:1px solid #333; border-radius:6px; padding:8px; width:100%; box-sizing:border-box;" oninput="autoSave()"></textarea></div>
+    </div>
+
+    <button class="btn-main" onclick="logSnapshot()">✅ 紀錄目前衝刺進度</button>
+
+    <h3>📜 歷史進度紀錄庫</h3>
+    <div id="history_list"></div>
+</div>
+
+<script>
+    const WK_KEY = 'artale_rush_200_wk_v6';
+    const LG_KEY = 'artale_rush_200_lg_v6';
+
+    const mwPct = [0, 0.01, 0.01, 0.02, 0.02, 0.03, 0.03, 0.04, 0.04, 0.05, 0.05, 0.06, 0.06, 0.07, 0.07, 0.08, 0.08, 0.09, 0.09, 0.1, 0.1, 0.11, 0.11, 0.12, 0.12, 0.13, 0.13, 0.14, 0.14, 0.15, 0.15];
+    
+    let rawEquipDEX = 149; 
+    let rawEquipSTR = 78;  
+    let pendingDeleteIndex = null;
+
+    const NEXT_EXP_TABLE = {
+        180: 691739165,  181: 729784819,  182: 769777027,  183: 811960808,  184: 856456260,
+        185: 903390063,  186: 952895838,  187: 1060194805, 188: 1118293480, 189: 1179575962,
+        190: 1244216724, 191: 1312399800, 192: 1384319309, 193: 1460180007, 194: 1540197871,
+        195: 1624600714, 196: 1713628833, 197: 1807535693, 198: 1906588648, 199: 2011069705
+    };
+
+    function init() {
+        loadWk();
+        handleMWChange();
+        updateAll();
+        renderLg(); // 頁面載入時立刻渲染歷史紀錄
+    }
+
+    function handleStatInput(type) {
+        const base = parseInt(document.getElementById(type + '_base').value) || 0;
+        const bonus = parseInt(document.getElementById(type + '_equip').value) || 0;
+        const mwLevel = parseInt(document.getElementById('skill_mw').value);
+        const pct = mwPct[mwLevel] || 0;
+
+        if (type === 'dex') rawEquipDEX = bonus - Math.floor(base * pct);
+        else rawEquipSTR = bonus - Math.floor(base * pct);
+
+        updateAll();
+    }
+
+    function handleMWChange() {
+        const mwLevel = parseInt(document.getElementById('skill_mw').value);
+        const pct = mwPct[mwLevel] || 0;
+
+        const dexEquipInput = document.getElementById('dex_equip');
+        const strEquipInput = document.getElementById('str_equip');
+
+        if (mwLevel > 0) {
+            dexEquipInput.disabled = true;
+            strEquipInput.disabled = true;
+        } else {
+            dexEquipInput.disabled = false;
+            strEquipInput.disabled = false;
+        }
+
+        const dexBase = parseInt(document.getElementById('dex_base').value) || 0;
+        const strBase = parseInt(document.getElementById('str_base').value) || 0;
+
+        dexEquipInput.value = rawEquipDEX + Math.floor(dexBase * pct);
+        strEquipInput.value = rawEquipSTR + Math.floor(strBase * pct);
+
+        updateAll();
+    }
+
+    function calculate() {
+        const getV = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+        const dexT = getV('dex_base') + getV('dex_equip');
+        const strT = getV('str_base') + getV('str_equip');
+
+        let totalAtt = getV('att_weapon') + getV('att_glove') + getV('att_arrow') + getV('att_other') + getV('att_act');
+        if (document.getElementById('chk_conc').checked) {
+            totalAtt += 26;
+        }
+
+        const mastery = 0.9;
+        let max = Math.floor((dexT * 3.4 + strT) * (totalAtt / 100));
+        let min = Math.floor((dexT * 3.4 * 0.9 * mastery + strT) * (totalAtt / 100));
+
+        if (document.getElementById('chk_echo').checked) {
+            max = Math.floor(max * 1.04);
+            min = Math.floor(min * 1.04);
+        }
+
+        document.getElementById('range_display').innerText = `${min} ~ ${max}`;
+        return { min, max, totalAtt, dexT, strT };
+    }
+
+    function calculateExp() {
+        const curLv = parseInt(document.getElementById('lv').value) || 187;
+        const curPct = parseFloat(document.getElementById('exp_pct').value) || 0;
+        const effW = parseFloat(document.getElementById('exp_eff').value) || 0; 
+
+        const reqNextExp = NEXT_EXP_TABLE[curLv] || 1060194805;
+        const hasExp = reqNextExp * (curPct / 100);
+        const needNextExp = reqNextExp - hasExp;
+
+        const expPerHour = effW * 10000 * 6;
+
+        let hoursNext = "0.00";
+        if (expPerHour > 0) {
+            hoursNext = (needNextExp / expPerHour).toFixed(2);
+        }
+        document.getElementById('time_next_lv').innerText = `${hoursNext} 小時`;
+
+        let totalRemainExp = needNextExp;
+        for (let l = curLv + 1; l < 200; l++) {
+            if (NEXT_EXP_TABLE[l]) totalRemainExp += NEXT_EXP_TABLE[l];
+        }
+
+        const totalRemainYi = (totalRemainExp / 100000000).toFixed(2);
+        document.getElementById('exp_remain_total').innerText = `${totalRemainYi} 億`;
+
+        const expPer10min = effW * 10000;
+        let totalCounts = 0;
+        if (expPer10min > 0) {
+            totalCounts = Math.ceil(totalRemainExp / expPer10min);
+        }
+        document.getElementById('count_remain_total').innerText = `${totalCounts.toLocaleString()} 次`;
+
+        return { hoursNext, totalRemainYi, totalCounts };
+    }
+
+    function updateAll() {
+        calculate();
+        calculateExp();
+        autoSave();
+    }
+
+    function autoSave() {
+        const fields = ['lv','dex_base','dex_equip','str_base','str_equip','skill_mw','att_weapon','att_glove','att_arrow','att_other','att_act','exp_pct','exp_eff','map_name','note_area'];
+        const data = { rawEquipDEX, rawEquipSTR };
+        fields.forEach(f => {
+            const el = document.getElementById(f);
+            if(el) data[f] = el.value;
+        });
+        data.chk_echo = document.getElementById('chk_echo').checked;
+        data.chk_conc = document.getElementById('chk_conc').checked;
+        localStorage.setItem(WK_KEY, JSON.stringify(data));
+    }
+
+    function loadWk() {
+        const saved = JSON.parse(localStorage.getItem(WK_KEY));
+        if (saved) {
+            rawEquipDEX = saved.rawEquipDEX !== undefined ? saved.rawEquipDEX : 149;
+            rawEquipSTR = saved.rawEquipSTR !== undefined ? saved.rawEquipSTR : 78;
+            Object.keys(saved).forEach(k => {
+                const el = document.getElementById(k);
+                if(el) {
+                    if (el.type === 'checkbox') el.checked = saved[k];
+                    else el.value = saved[k];
+                }
+            });
+        }
+    }
+
+    function logSnapshot() {
+        const calcRes = calculate();
+        const expRes = calculateExp();
+
+        const snap = {
+            lv: document.getElementById('lv').value,
+            pct: document.getElementById('exp_pct').value,
+            map: document.getElementById('map_name').value || '未填',
+            range: `${calcRes.min} ~ ${calcRes.max}`,
+            dexTotal: calcRes.dexT,
+            strTotal: calcRes.strT,
+            att: calcRes.totalAtt,
+            echo: document.getElementById('chk_echo').checked ? '有' : '無',
+            eff: document.getElementById('exp_eff').value,
+            nextHours: expRes.hoursNext,
+            remainYi: expRes.totalRemainYi,
+            remainCounts: expRes.totalCounts,
+            note: document.getElementById('note_area').value,
+            time: new Date().toLocaleString()
+        };
+
+        let logs = JSON.parse(localStorage.getItem(LG_KEY)) || [];
+        logs.unshift(snap);
+        localStorage.setItem(LG_KEY, JSON.stringify(logs));
+        renderLg();
+    }
+
+    function renderLg() {
+        const logs = JSON.parse(localStorage.getItem(LG_KEY)) || [];
+        const list = document.getElementById('history_list');
+        list.innerHTML = logs.map((log, i) => {
+            return `<div class="history-item">
+                <div class="hist-header">
+                    <div class="hist-title">LV${log.lv} (${log.pct}%) - ${log.map}</div>
+                    <div style="color:#666; font-size:10px;">${log.time}</div>
+                </div>
+                <div class="hist-grid">
+                    <div><b>表功：</b> <span style="color:var(--accent); font-weight:bold;">${log.range}</span></div>
+                    <div><b>屬性：</b> DEX ${log.dexTotal || '-'} / STR ${log.strTotal || '-'}</div>
+                    <div><b>總攻擊：</b> ${log.att} (迴響:${log.echo})</div>
+                    <div><b>效率：</b> <span style="color:var(--accent); font-weight:bold;">${log.eff}W</span>/10m</div>
+                    <div><b>升級需時：</b> ${log.nextHours} 小時</div>
+                </div>
+                <div class="hist-full">
+                    <b>離 200 等剩餘：</b> ${log.remainYi} 億經驗 (${log.remainCounts.toLocaleString()} 次)
+                </div>
+                ${log.note ? `<div class="hist-full"><b>備註：</b> ${log.note}</div>` : ''}
+                <div class="hist-controls">
+                    <button class="btn-ctrl" onclick="moveItem(${i}, -1)">↑</button>
+                    <button class="btn-ctrl" onclick="moveItem(${i}, 1)">↓</button>
+                    <button class="btn-ctrl" style="color:var(--red);" onclick="askDelete(${i})">✕ 刪除</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function moveItem(index, dir) {
+        let logs = JSON.parse(localStorage.getItem(LG_KEY)) || [];
+        let target = index + dir;
+        if (target >= 0 && target < logs.length) {
+            [logs[index], logs[target]] = [logs[target], logs[index]];
+            localStorage.setItem(LG_KEY, JSON.stringify(logs));
+            renderLg();
+        }
+    }
+
+    function askDelete(index) {
+        pendingDeleteIndex = index;
+        document.getElementById('custom_modal').style.display = 'flex';
+        document.getElementById('modal_confirm_btn').onclick = function() {
+            let logs = JSON.parse(localStorage.getItem(LG_KEY)) || [];
+            logs.splice(pendingDeleteIndex, 1);
+            localStorage.setItem(LG_KEY, JSON.stringify(logs));
+            closeModal();
+            renderLg();
+        };
+    }
+
+    function closeModal() {
+        document.getElementById('custom_modal').style.display = 'none';
+        pendingDeleteIndex = null;
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
