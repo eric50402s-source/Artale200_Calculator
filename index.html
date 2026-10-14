@@ -108,8 +108,8 @@
 </div>
 
 <script>
-    const WK_KEY = 'artale_rush_200_wk_v6';
-    const LG_KEY = 'artale_rush_200_lg_v6';
+    const WK_KEY = 'artale_rush_200_wk_v7';
+    const LG_KEY = 'artale_rush_200_lg_v7';
 
     const mwPct = [0, 0.01, 0.01, 0.02, 0.02, 0.03, 0.03, 0.04, 0.04, 0.05, 0.05, 0.06, 0.06, 0.07, 0.07, 0.08, 0.08, 0.09, 0.09, 0.1, 0.1, 0.11, 0.11, 0.12, 0.12, 0.13, 0.13, 0.14, 0.14, 0.15, 0.15];
     
@@ -124,6 +124,13 @@
         195: 1624600714, 196: 1713628833, 197: 1807535693, 198: 1906588648, 199: 2011069705
     };
 
+    function safeVal(id, defaultVal) {
+        const el = document.getElementById(id);
+        if (!el) return defaultVal;
+        const v = parseFloat(el.value);
+        return isNaN(v) ? defaultVal : v;
+    }
+
     function init() {
         loadWk();
         handleMWChange();
@@ -132,9 +139,9 @@
     }
 
     function handleStatInput(type) {
-        const base = parseInt(document.getElementById(type + '_base').value) || 0;
-        const bonus = parseInt(document.getElementById(type + '_equip').value) || 0;
-        const mwLevel = parseInt(document.getElementById('skill_mw').value);
+        const base = safeVal(type + '_base', type === 'dex' ? 900 : 47);
+        const bonus = safeVal(type + '_equip', type === 'dex' ? 149 : 78);
+        const mwLevel = parseInt(safeVal('skill_mw', 0));
         const pct = mwPct[mwLevel] || 0;
 
         if (type === 'dex') rawEquipDEX = bonus - Math.floor(base * pct);
@@ -144,7 +151,7 @@
     }
 
     function handleMWChange() {
-        const mwLevel = parseInt(document.getElementById('skill_mw').value);
+        const mwLevel = parseInt(safeVal('skill_mw', 0));
         const pct = mwPct[mwLevel] || 0;
 
         const dexEquipInput = document.getElementById('dex_equip');
@@ -155,4 +162,192 @@
             strEquipInput.disabled = true;
         } else {
             dexEquipInput.disabled = false;
-            strEqu
+            strEquipInput.disabled = false;
+        }
+
+        const dexBase = safeVal('dex_base', 900);
+        const strBase = safeVal('str_base', 47);
+
+        dexEquipInput.value = rawEquipDEX + Math.floor(dexBase * pct);
+        strEquipInput.value = rawEquipSTR + Math.floor(strBase * pct);
+
+        updateAll();
+    }
+
+    function calculate() {
+        const dexT = safeVal('dex_base', 900) + safeVal('dex_equip', 149);
+        const strT = safeVal('str_base', 47) + safeVal('str_equip', 78);
+
+        let totalAtt = safeVal('att_weapon', 125) + safeVal('att_glove', 12) + safeVal('att_arrow', 12) + safeVal('att_other', 1) + safeVal('att_act', 0);
+        if (document.getElementById('chk_conc').checked) {
+            totalAtt += 26;
+        }
+
+        const mastery = 0.9;
+        let max = Math.floor((dexT * 3.4 + strT) * (totalAtt / 100));
+        let min = Math.floor((dexT * 3.4 * 0.9 * mastery + strT) * (totalAtt / 100));
+
+        if (document.getElementById('chk_echo').checked) {
+            max = Math.floor(max * 1.04);
+            min = Math.floor(min * 1.04);
+        }
+
+        document.getElementById('range_display').innerText = `${min} ~ ${max}`;
+        return { min, max, totalAtt, dexT, strT };
+    }
+
+    function calculateExp() {
+        const curLv = parseInt(safeVal('lv', 187));
+        const curPct = safeVal('exp_pct', 85.84);
+        const effW = safeVal('exp_eff', 580); 
+
+        const reqNextExp = NEXT_EXP_TABLE[curLv] || 1060194805;
+        const hasExp = reqNextExp * (curPct / 100);
+        const needNextExp = reqNextExp - hasExp;
+
+        const expPerHour = effW * 10000 * 6;
+
+        let hoursNext = "0.00";
+        if (expPerHour > 0) {
+            hoursNext = (needNextExp / expPerHour).toFixed(2);
+        }
+        document.getElementById('time_next_lv').innerText = `${hoursNext} 小時`;
+
+        let totalRemainExp = needNextExp;
+        for (let l = curLv + 1; l < 200; l++) {
+            if (NEXT_EXP_TABLE[l]) totalRemainExp += NEXT_EXP_TABLE[l];
+        }
+
+        const totalRemainYi = (totalRemainExp / 100000000).toFixed(2);
+        document.getElementById('exp_remain_total').innerText = `${totalRemainYi} 億`;
+
+        const expPer10min = effW * 10000;
+        let totalCounts = 0;
+        if (expPer10min > 0) {
+            totalCounts = Math.ceil(totalRemainExp / expPer10min);
+        }
+        document.getElementById('count_remain_total').innerText = `${totalCounts.toLocaleString()} 次`;
+
+        return { hoursNext, totalRemainYi, totalCounts };
+    }
+
+    function updateAll() {
+        calculate();
+        calculateExp();
+        autoSave();
+    }
+
+    function autoSave() {
+        const fields = ['lv','dex_base','dex_equip','str_base','str_equip','skill_mw','att_weapon','att_glove','att_arrow','att_other','att_act','exp_pct','exp_eff','map_name','note_area'];
+        const data = { rawEquipDEX, rawEquipSTR };
+        fields.forEach(f => {
+            const el = document.getElementById(f);
+            if(el) data[f] = el.value;
+        });
+        data.chk_echo = document.getElementById('chk_echo').checked;
+        data.chk_conc = document.getElementById('chk_conc').checked;
+        localStorage.setItem(WK_KEY, JSON.stringify(data));
+    }
+
+    function loadWk() {
+        const saved = JSON.parse(localStorage.getItem(WK_KEY));
+        if (saved) {
+            rawEquipDEX = saved.rawEquipDEX !== undefined ? saved.rawEquipDEX : 149;
+            rawEquipSTR = saved.rawEquipSTR !== undefined ? saved.rawEquipSTR : 78;
+            Object.keys(saved).forEach(k => {
+                const el = document.getElementById(k);
+                if(el && saved[k] !== undefined && saved[k] !== "") {
+                    if (el.type === 'checkbox') el.checked = saved[k];
+                    else el.value = saved[k];
+                }
+            });
+        }
+    }
+
+    function logSnapshot() {
+        const calcRes = calculate();
+        const expRes = calculateExp();
+
+        const snap = {
+            lv: document.getElementById('lv').value,
+            pct: document.getElementById('exp_pct').value,
+            map: document.getElementById('map_name').value || '未填',
+            range: `${calcRes.min} ~ ${calcRes.max}`,
+            dexTotal: calcRes.dexT,
+            strTotal: calcRes.strT,
+            att: calcRes.totalAtt,
+            echo: document.getElementById('chk_echo').checked ? '有' : '無',
+            eff: document.getElementById('exp_eff').value,
+            nextHours: expRes.hoursNext,
+            remainYi: expRes.totalRemainYi,
+            remainCounts: expRes.totalCounts,
+            note: document.getElementById('note_area').value,
+            time: new Date().toLocaleString()
+        };
+
+        let logs = JSON.parse(localStorage.getItem(LG_KEY)) || [];
+        logs.unshift(snap);
+        localStorage.setItem(LG_KEY, JSON.stringify(logs));
+        renderLg();
+    }
+
+    function renderLg() {
+        const logs = JSON.parse(localStorage.getItem(LG_KEY)) || [];
+        const list = document.getElementById('history_list');
+        list.innerHTML = logs.map((log, i) => {
+            return `<div class="history-item">
+                <div class="hist-header">
+                    <div class="hist-title">LV${log.lv} (${log.pct}%) - ${log.map}</div>
+                    <div style="color:#666; font-size:10px;">${log.time}</div>
+                </div>
+                <div class="hist-grid">
+                    <div><b>表功：</b> <span style="color:var(--accent); font-weight:bold;">${log.range}</span></div>
+                    <div><b>屬性：</b> DEX ${log.dexTotal || '-'} / STR ${log.strTotal || '-'}</div>
+                    <div><b>總攻擊：</b> ${log.att} (迴響:${log.echo})</div>
+                    <div><b>效率：</b> <span style="color:var(--accent); font-weight:bold;">${log.eff}W</span>/10m</div>
+                    <div><b>升級需時：</b> ${log.nextHours} 小時</div>
+                </div>
+                <div class="hist-full">
+                    <b>離 200 等剩餘：</b> ${log.remainYi} 億經驗 (${log.remainCounts.toLocaleString()} 次)
+                </div>
+                ${log.note ? `<div class="hist-full"><b>備註：</b> ${log.note}</div>` : ''}
+                <div class="hist-controls">
+                    <button class="btn-ctrl" onclick="moveItem(${i}, -1)">↑</button>
+                    <button class="btn-ctrl" onclick="moveItem(${i}, 1)">↓</button>
+                    <button class="btn-ctrl" style="color:var(--red);" onclick="askDelete(${i})">✕ 刪除</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function moveItem(index, dir) {
+        let logs = JSON.parse(localStorage.getItem(LG_KEY)) || [];
+        let target = index + dir;
+        if (target >= 0 && target < logs.length) {
+            [logs[index], logs[target]] = [logs[target], logs[index]];
+            localStorage.setItem(LG_KEY, JSON.stringify(logs));
+            renderLg();
+        }
+    }
+
+    function askDelete(index) {
+        pendingDeleteIndex = index;
+        document.getElementById('custom_modal').style.display = 'flex';
+        document.getElementById('modal_confirm_btn').onclick = function() {
+            let logs = JSON.parse(localStorage.getItem(LG_KEY)) || [];
+            logs.splice(pendingDeleteIndex, 1);
+            localStorage.setItem(LG_KEY, JSON.stringify(logs));
+            closeModal();
+            renderLg();
+        };
+    }
+
+    function closeModal() {
+        document.getElementById('custom_modal').style.display = 'none';
+        pendingDeleteIndex = null;
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
