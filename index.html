@@ -108,8 +108,8 @@
 </div>
 
 <script>
-    const WK_KEY = 'artale_rush_200_wk_v9';
-    const LG_KEY = 'artale_rush_200_lg_v9';
+    const WK_KEY = 'artale_rush_200_wk_v10';
+    const LG_KEY = 'artale_rush_200_lg_v10';
 
     const mwPct = [0, 0.01, 0.01, 0.02, 0.02, 0.03, 0.03, 0.04, 0.04, 0.05, 0.05, 0.06, 0.06, 0.07, 0.07, 0.08, 0.08, 0.09, 0.09, 0.1, 0.1, 0.11, 0.11, 0.12, 0.12, 0.13, 0.13, 0.14, 0.14, 0.15, 0.15];
     
@@ -124,9 +124,9 @@
         195: 1624600714, 196: 1713628833, 197: 1807535693, 198: 1906588648, 199: 2011069705
     };
 
-    function safeVal(id, defaultVal) {
+    function safeVal(id, defaultVal = 0) {
         const el = document.getElementById(id);
-        if (!el) return defaultVal;
+        if (!el || el.value === "") return defaultVal;
         const v = parseFloat(el.value);
         return isNaN(v) ? defaultVal : v;
     }
@@ -141,13 +141,14 @@
     function handleStatInput(type) {
         const mwLevel = parseInt(safeVal('skill_mw', 0));
         
-        // 只有在楓祝未開啟 (0) 時，修改裝備欄才更新純裝備基準值
+        // 楓祝關閉時，修改輸入框允許直接寫入純裝備基準值
         if (mwLevel === 0) {
-            if (type === 'dex') rawEquipDEX = safeVal('dex_equip', 149);
-            else if (type === 'str') rawEquipSTR = safeVal('str_equip', 78);
+            const dexIn = document.getElementById('dex_equip').value;
+            const strIn = document.getElementById('str_equip').value;
+            if (type === 'dex') rawEquipDEX = dexIn === "" ? 0 : parseFloat(dexIn) || 0;
+            else if (type === 'str') rawEquipSTR = strIn === "" ? 0 : parseFloat(strIn) || 0;
         }
 
-        // 修改配點或裝備時，重新計算加成欄位與表功
         handleMWChange();
     }
 
@@ -161,26 +162,23 @@
         if (mwLevel > 0) {
             dexEquipInput.disabled = true;
             strEquipInput.disabled = true;
+            const dexBase = safeVal('dex_base', 0);
+            const strBase = safeVal('str_base', 0);
+            dexEquipInput.value = rawEquipDEX + Math.floor(dexBase * pct);
+            strEquipInput.value = rawEquipSTR + Math.floor(strBase * pct);
         } else {
             dexEquipInput.disabled = false;
             strEquipInput.disabled = false;
         }
 
-        const dexBase = safeVal('dex_base', 900);
-        const strBase = safeVal('str_base', 47);
-
-        // 即時依據配點與楓祝加成計算，更新裝備/加成欄位顯示
-        dexEquipInput.value = rawEquipDEX + Math.floor(dexBase * pct);
-        strEquipInput.value = rawEquipSTR + Math.floor(strBase * pct);
-
         updateAll();
     }
 
     function calculate() {
-        const dexT = safeVal('dex_base', 900) + safeVal('dex_equip', 149);
-        const strT = safeVal('str_base', 47) + safeVal('str_equip', 78);
+        const dexT = safeVal('dex_base', 0) + safeVal('dex_equip', 0);
+        const strT = safeVal('str_base', 0) + safeVal('str_equip', 0);
 
-        let totalAtt = safeVal('att_weapon', 125) + safeVal('att_glove', 12) + safeVal('att_arrow', 12) + safeVal('att_other', 1) + safeVal('att_act', 0);
+        let totalAtt = safeVal('att_weapon', 0) + safeVal('att_glove', 0) + safeVal('att_arrow', 0) + safeVal('att_other', 0) + safeVal('att_act', 0);
         if (document.getElementById('chk_conc').checked) {
             totalAtt += 26;
         }
@@ -200,8 +198,8 @@
 
     function calculateExp() {
         const curLv = parseInt(safeVal('lv', 187));
-        const curPct = safeVal('exp_pct', 85.84);
-        const effW = safeVal('exp_eff', 580); 
+        const curPct = safeVal('exp_pct', 0);
+        const effW = safeVal('exp_eff', 0); 
 
         const reqNextExp = NEXT_EXP_TABLE[curLv] || 1060194805;
         const hasExp = reqNextExp * (curPct / 100);
@@ -258,7 +256,7 @@
             rawEquipSTR = saved.rawEquipSTR !== undefined ? saved.rawEquipSTR : 78;
             Object.keys(saved).forEach(k => {
                 const el = document.getElementById(k);
-                if(el && saved[k] !== undefined && saved[k] !== "") {
+                if(el && saved[k] !== undefined) {
                     if (el.type === 'checkbox') el.checked = saved[k];
                     else el.value = saved[k];
                 }
